@@ -3,7 +3,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-using lsl_inlet = System.IntPtr;
+using lsl_inlet = SharpLSL.Interop.InletHandle;
 using lsl_streaminfo = System.IntPtr;
 
 namespace SharpLSL.Interop
@@ -166,6 +166,9 @@ namespace SharpLSL.Interop
         [return: NativeTypeName("int32_t")]
         public static partial int lsl_smoothing_halftime(lsl_inlet @in, float value);
 #else
+        [DllImport("lsl", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+        public static extern void lsl_destroy_inlet(IntPtr @in);
+
         [DllImport("lsl", CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
         public static extern double lsl_pull_sample_str(lsl_inlet @in, IntPtr[] buffer, int buffer_elements, double timeout, int* ec);
 

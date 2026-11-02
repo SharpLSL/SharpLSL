@@ -55,8 +55,10 @@ ClangSharpPInvokeGenerator `
     --additional -m64 `
     --output ../src/SharpLSL/Interop/Inlet.g.cs `
     --remap `
-    lsl_inlet=IntPtr `
-    lsl_streaminfo=IntPtr
+    lsl_inlet=InletHandle `
+    lsl_streaminfo=IntPtr `
+    --exclude `
+    lsl_destroy_inlet
 
 # outlet.h
 ClangSharpPInvokeGenerator `

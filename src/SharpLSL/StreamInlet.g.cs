@@ -32,7 +32,7 @@ namespace SharpLSL
     /// alternatively through a small built-in DOM interface).
     /// </para>
     /// </remarks>
-    public class StreamInlet : LSLObject
+    public class StreamInlet : IDisposable
     {
         /// <summary>
         /// Constructs a new stream inlet from a resolved <see cref="StreamInfo"/>.
@@ -89,13 +89,14 @@ namespace SharpLSL
             int maxBufferLength = 360,
             bool recover = true,
             TransportOptions transportOptions = TransportOptions.Default)
-            : base(CreateInlet(
+        {
+            _handle = CreateInlet(
                 streamInfo,
                 maxChunkLength,
                 maxBufferLength,
                 recover,
-                transportOptions))
-        {
+                transportOptions);
+
             ChannelCount = streamInfo.ChannelCount;
             _sampleBytes = streamInfo.SampleBytes;
         }
@@ -115,8 +116,9 @@ namespace SharpLSL
         /// Thrown if the handle is invalid (IntPtr.Zero).
         /// </exception>
         public StreamInlet(IntPtr handle, bool ownsHandle = true)
-            : base(handle, ownsHandle)
         {
+            _handle = new InletHandle(handle, ownsHandle);
+
             using (var streamInfo = GetStreamInfo())
             {
                 ChannelCount = streamInfo.ChannelCount;
@@ -166,7 +168,7 @@ namespace SharpLSL
 
             unsafe
             {
-                streamInfo = lsl_get_fullinfo(handle, timeout, &errorCode);
+                streamInfo = lsl_get_fullinfo(_handle, timeout, &errorCode);
             }
 
             CheckError(errorCode);
@@ -204,7 +206,7 @@ namespace SharpLSL
 
             unsafe
             {
-                lsl_open_stream(handle, timeout, &errorCode);
+                lsl_open_stream(_handle, timeout, &errorCode);
             }
 
             CheckError(errorCode);
@@ -228,7 +230,7 @@ namespace SharpLSL
         {
             ThrowIfInvalid();
 
-            lsl_close_stream(handle);
+            lsl_close_stream(_handle);
         }
 
         /// <summary>
@@ -282,7 +284,7 @@ namespace SharpLSL
 
             unsafe
             {
-                result = lsl_time_correction(handle, timeout, &errorCode);
+                result = lsl_time_correction(_handle, timeout, &errorCode);
             }
 
             CheckError(errorCode);
@@ -316,7 +318,7 @@ namespace SharpLSL
 
             unsafe
             {
-                result = lsl_time_correction_ex(handle, &remoteTimeOut, &uncertaintyOut, timeout, &errorCode);
+                result = lsl_time_correction_ex(_handle, &remoteTimeOut, &uncertaintyOut, timeout, &errorCode);
             }
 
             CheckError(errorCode);
@@ -361,7 +363,7 @@ namespace SharpLSL
         {
             ThrowIfInvalid();
 
-            CheckError(lsl_set_postprocessing(handle, (uint)postProcessingOptions));
+            CheckError(lsl_set_postprocessing(_handle, (uint)postProcessingOptions));
         }
 
         /// <summary>
@@ -417,7 +419,7 @@ namespace SharpLSL
             {
                 fixed (sbyte* buffer = sample)
                 {
-                    timestamp = lsl_pull_sample_c(handle, buffer, sample.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_c(_handle, buffer, sample.Length, timeout, &errorCode);
                 }
             }
 
@@ -443,7 +445,7 @@ namespace SharpLSL
             {
                 fixed (sbyte* buffer = sample)
                 {
-                    timestamp = lsl_pull_sample_c(handle, buffer, sample.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_c(_handle, buffer, sample.Length, timeout, &errorCode);
                 }
             }
 
@@ -467,7 +469,7 @@ namespace SharpLSL
             {
                 fixed (short* buffer = sample)
                 {
-                    timestamp = lsl_pull_sample_s(handle, buffer, sample.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_s(_handle, buffer, sample.Length, timeout, &errorCode);
                 }
             }
 
@@ -493,7 +495,7 @@ namespace SharpLSL
             {
                 fixed (short* buffer = sample)
                 {
-                    timestamp = lsl_pull_sample_s(handle, buffer, sample.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_s(_handle, buffer, sample.Length, timeout, &errorCode);
                 }
             }
 
@@ -517,7 +519,7 @@ namespace SharpLSL
             {
                 fixed (int* buffer = sample)
                 {
-                    timestamp = lsl_pull_sample_i(handle, buffer, sample.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_i(_handle, buffer, sample.Length, timeout, &errorCode);
                 }
             }
 
@@ -543,7 +545,7 @@ namespace SharpLSL
             {
                 fixed (int* buffer = sample)
                 {
-                    timestamp = lsl_pull_sample_i(handle, buffer, sample.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_i(_handle, buffer, sample.Length, timeout, &errorCode);
                 }
             }
 
@@ -567,7 +569,7 @@ namespace SharpLSL
             {
                 fixed (long* buffer = sample)
                 {
-                    timestamp = lsl_pull_sample_l(handle, buffer, sample.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_l(_handle, buffer, sample.Length, timeout, &errorCode);
                 }
             }
 
@@ -593,7 +595,7 @@ namespace SharpLSL
             {
                 fixed (long* buffer = sample)
                 {
-                    timestamp = lsl_pull_sample_l(handle, buffer, sample.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_l(_handle, buffer, sample.Length, timeout, &errorCode);
                 }
             }
 
@@ -617,7 +619,7 @@ namespace SharpLSL
             {
                 fixed (float* buffer = sample)
                 {
-                    timestamp = lsl_pull_sample_f(handle, buffer, sample.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_f(_handle, buffer, sample.Length, timeout, &errorCode);
                 }
             }
 
@@ -643,7 +645,7 @@ namespace SharpLSL
             {
                 fixed (float* buffer = sample)
                 {
-                    timestamp = lsl_pull_sample_f(handle, buffer, sample.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_f(_handle, buffer, sample.Length, timeout, &errorCode);
                 }
             }
 
@@ -667,7 +669,7 @@ namespace SharpLSL
             {
                 fixed (double* buffer = sample)
                 {
-                    timestamp = lsl_pull_sample_d(handle, buffer, sample.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_d(_handle, buffer, sample.Length, timeout, &errorCode);
                 }
             }
 
@@ -693,7 +695,7 @@ namespace SharpLSL
             {
                 fixed (double* buffer = sample)
                 {
-                    timestamp = lsl_pull_sample_d(handle, buffer, sample.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_d(_handle, buffer, sample.Length, timeout, &errorCode);
                 }
             }
 
@@ -719,7 +721,7 @@ namespace SharpLSL
                 unsafe
                 {
                     // lsl_pull_sample_str automatically appends a '\0' at the end.
-                    timestamp = lsl_pull_sample_str(handle, buffer, buffer.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_str(_handle, buffer, buffer.Length, timeout, &errorCode);
                 }
 
                 CheckError(errorCode);
@@ -755,7 +757,7 @@ namespace SharpLSL
                 unsafe
                 {
                     // lsl_pull_sample_str automatically appends a '\0' at the end.
-                    timestamp = lsl_pull_sample_str(handle, buffer, buffer.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_str(_handle, buffer, buffer.Length, timeout, &errorCode);
                 }
 
                 CheckError(errorCode);
@@ -820,7 +822,7 @@ namespace SharpLSL
                     // Instead, lsl_pull_sample_buf returns the length of the sequence
                     // along with the received data.
                     // Besides, the received sample data may contain 0's.
-                    timestamp = lsl_pull_sample_buf(handle, buffer, lengths, buffer.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_buf(_handle, buffer, lengths, buffer.Length, timeout, &errorCode);
                 }
 
                 CheckError(errorCode);
@@ -917,7 +919,7 @@ namespace SharpLSL
             {
                 fixed (byte* buffer = sample)
                 {
-                    timestamp = lsl_pull_sample_v(handle, buffer, sample.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_v(_handle, buffer, sample.Length, timeout, &errorCode);
                 }
             }
 
@@ -943,7 +945,7 @@ namespace SharpLSL
                 fixed (byte* buffer = sample)
                 {
                     
-                    timestamp = lsl_pull_sample_v(handle, buffer, sample.Length, timeout, &errorCode);
+                    timestamp = lsl_pull_sample_v(_handle, buffer, sample.Length, timeout, &errorCode);
                 }
             }
 
@@ -969,7 +971,7 @@ namespace SharpLSL
 
             unsafe
             {
-                timestamp = lsl_pull_sample_v(handle, sample, _sampleBytes, timeout, &errorCode);
+                timestamp = lsl_pull_sample_v(_handle, sample, _sampleBytes, timeout, &errorCode);
             }
 
             CheckError(errorCode);
@@ -1027,7 +1029,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_c(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)(timestamps?.Length ?? 0), timeout, &errorCode);
                 }
             }
@@ -1058,7 +1060,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_c(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)timestamps.Length, timeout, &errorCode);
                 }
             }
@@ -1087,7 +1089,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_s(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)(timestamps?.Length ?? 0), timeout, &errorCode);
                 }
             }
@@ -1118,7 +1120,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_s(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)timestamps.Length, timeout, &errorCode);
                 }
             }
@@ -1147,7 +1149,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_i(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)(timestamps?.Length ?? 0), timeout, &errorCode);
                 }
             }
@@ -1178,7 +1180,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_i(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)timestamps.Length, timeout, &errorCode);
                 }
             }
@@ -1207,7 +1209,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_l(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)(timestamps?.Length ?? 0), timeout, &errorCode);
                 }
             }
@@ -1238,7 +1240,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_l(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)timestamps.Length, timeout, &errorCode);
                 }
             }
@@ -1267,7 +1269,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_f(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)(timestamps?.Length ?? 0), timeout, &errorCode);
                 }
             }
@@ -1298,7 +1300,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_f(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)timestamps.Length, timeout, &errorCode);
                 }
             }
@@ -1327,7 +1329,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_d(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)(timestamps?.Length ?? 0), timeout, &errorCode);
                 }
             }
@@ -1358,7 +1360,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_d(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)timestamps.Length, timeout, &errorCode);
                 }
             }
@@ -1389,7 +1391,7 @@ namespace SharpLSL
                     fixed (double* timestampsBuffer = timestamps)
                     {
                         result = lsl_pull_chunk_str(
-                            handle, buffer, timestampsBuffer, (uint)chunk.Length,
+                            _handle, buffer, timestampsBuffer, (uint)chunk.Length,
                             (uint)(timestamps?.Length ?? 0), timeout, &errorCode);                    
                     }
                 }
@@ -1431,7 +1433,7 @@ namespace SharpLSL
                     fixed (double* timestampsBuffer = timestamps)
                     {
                         result = lsl_pull_chunk_str(
-                            handle, buffer, timestampsBuffer, (uint)chunk.Length,
+                            _handle, buffer, timestampsBuffer, (uint)chunk.Length,
                             (uint)timestamps.Length, timeout, &errorCode);
                     }
                 }
@@ -1485,7 +1487,7 @@ namespace SharpLSL
             try
             {
                 result = lsl_pull_chunk_buf(
-                    handle, buffer, lengths, timestamps, (uint)chunk.Length,
+                    _handle, buffer, lengths, timestamps, (uint)chunk.Length,
                     (uint)(timestamps?.Length ?? 0), timeout, ref errorCode);
                 CheckError(errorCode);
 
@@ -1560,7 +1562,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_c(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)(timestamps?.Length ?? 0), timeout, &errorCode);
                 }
             }
@@ -1587,7 +1589,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_s(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)(timestamps?.Length ?? 0), timeout, &errorCode);
                 }
             }
@@ -1614,7 +1616,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_i(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)(timestamps?.Length ?? 0), timeout, &errorCode);
                 }
             }
@@ -1641,7 +1643,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_l(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)(timestamps?.Length ?? 0), timeout, &errorCode);
                 }
             }
@@ -1668,7 +1670,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_f(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)(timestamps?.Length ?? 0), timeout, &errorCode);
                 }
             }
@@ -1695,7 +1697,7 @@ namespace SharpLSL
                 fixed (double* timestampsBuffer = timestamps)
                 {
                     result = lsl_pull_chunk_d(
-                        handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
+                        _handle, chunkBuffer, timestampsBuffer, (uint)chunk.Length,
                         (uint)(timestamps?.Length ?? 0), timeout, &errorCode);
                 }
             }
@@ -1725,7 +1727,7 @@ namespace SharpLSL
                     fixed (double* timestampsBuffer = timestamps)
                     {
                         result = lsl_pull_chunk_str(
-                            handle, buffer, timestampsBuffer, (uint)chunk.Length,
+                            _handle, buffer, timestampsBuffer, (uint)chunk.Length,
                             (uint)(timestamps?.Length ?? 0), timeout, &errorCode);
                     }
                 }
@@ -1767,7 +1769,7 @@ namespace SharpLSL
         {
             ThrowIfInvalid();
 
-            return lsl_samples_available(handle);
+            return lsl_samples_available(_handle);
         }
 
         /// <summary>
@@ -1783,7 +1785,7 @@ namespace SharpLSL
         {
             ThrowIfInvalid();
 
-            return lsl_inlet_flush(handle);
+            return lsl_inlet_flush(_handle);
         }
 
         /// <summary>
@@ -1806,7 +1808,7 @@ namespace SharpLSL
         {
             ThrowIfInvalid();
 
-            return Convert.ToBoolean(lsl_was_clock_reset(handle));
+            return Convert.ToBoolean(lsl_was_clock_reset(_handle));
         }
 
         /// <summary>
@@ -1831,24 +1833,31 @@ namespace SharpLSL
         {
             ThrowIfInvalid();
 
-            CheckError(lsl_smoothing_halftime(handle, halfTime));
+            CheckError(lsl_smoothing_halftime(_handle, halfTime));
         }
 
-        /// <summary>
-        /// Destroys the underlying native stream inlet handle.
-        /// </summary>
-        /// <remarks>
-        /// The inlet will automatically disconnect if destroyed.
-        /// </remarks>
-        protected override void DestroyLSLObject()
+        public void Dispose()
         {
-            lsl_destroy_inlet(handle);
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (_handle != null && !_handle.IsInvalid)
+                _handle.Dispose();
+        }
+
+        private void ThrowIfInvalid()
+        {
+            if (_handle == null || _handle.IsInvalid)
+                throw new InvalidOperationException("The native LSL handle is invalid.");
         }
 
 #if !NET35
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
 #endif
-        private static IntPtr CreateInlet(
+        private static InletHandle CreateInlet(
             StreamInfo streamInfo,
             int maxChunkLength,
             int maxBufferLength,
@@ -1869,6 +1878,7 @@ namespace SharpLSL
                 (lsl_transport_options_t)transportOptions);
         }
 
+        private readonly InletHandle _handle;
         private int _sampleBytes;
     }
 }
